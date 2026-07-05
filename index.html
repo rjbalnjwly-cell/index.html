@@ -1,1 +1,296 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>النجولي - واجهة تعليمية</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', Tahoma, sans-serif;
+    background: #f5f5f5;
+    padding: 24px;
+    color: #1a1a1a;
+  }
+  .container {
+    max-width: 480px;
+    margin: 0 auto;
+    background: #fff;
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  }
+  .header { text-align: center; margin-bottom: 24px; }
+  .header h1 { font-size: 28px; font-weight: 600; margin-bottom: 4px; }
+  .header p { font-size: 14px; color: #666; }
+  .tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  .tabs button {
+    flex: 1;
+    padding: 10px 16px;
+    border: 1px solid #e0e0e0;
+    border-radius: 10px;
+    background: transparent;
+    color: #666;
+    font: inherit;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s;
+  }
+  .tabs button.active {
+    background: #f0f0f0;
+    color: #1a1a1a;
+    font-weight: 600;
+  }
+  .panel { display: none; }
+  .panel.active { display: block; }
+  .card {
+    padding: 12px 16px;
+    border: 1px solid #e0e0e0;
+    border-radius: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+    background: #fff;
+  }
+  .card .name { font-weight: 500; color: #1a1a1a; }
+  .card .meta { font-size: 12px; color: #999; margin-top: 2px; }
+  .badge {
+    font-size: 12px;
+    padding: 4px 10px;
+    border-radius: 6px;
+  }
+  .badge.active { background: #e8f5e9; color: #2e7d32; }
+  .badge.absent { background: #fff3e0; color: #ef6c00; }
+  input {
+    padding: 10px 14px;
+    border: 1px solid #e0e0e0;
+    border-radius: 10px;
+    font: inherit;
+    width: 100%;
+    margin-bottom: 10px;
+    outline: none;
+  }
+  input:focus { border-color: #1a1a1a; }
+  .btn-primary {
+    padding: 10px 16px;
+    border: none;
+    border-radius: 10px;
+    background: #1a1a1a;
+    color: #fff;
+    font: inherit;
+    cursor: pointer;
+    font-weight: 500;
+    width: 100%;
+  }
+  .btn-secondary {
+    padding: 4px 10px;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    background: transparent;
+    font: inherit;
+    cursor: pointer;
+    font-size: 12px;
+  }
+  .msg { font-size: 12px; text-align: center; margin-top: 8px; }
+  .msg.success { color: #2e7d32; }
+  .msg.error { color: #c62828; }
+  .login-box {
+    max-width: 320px;
+    margin: 0 auto;
+    text-align: center;
+  }
+  .login-box h2 { font-size: 18px; margin-bottom: 8px; }
+  .login-box p { font-size: 12px; color: #999; margin-bottom: 16px; }
+  .manager-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+  .manager-header h2 { font-size: 16px; font-weight: 600; }
+</style>
+</head>
+<body>
 
+<div class="container">
+  <div class="header">
+    <h1>النجولي</h1>
+    <p>واجهة تعليمية بسيطة</p>
+  </div>
+
+  <div class="tabs" id="main-tabs">
+    <button class="active" onclick="showTab('students')">الطلاب</button>
+    <button onclick="showTab('lessons')">الدروس</button>
+    <button onclick="showTab('add')">إضافة</button>
+    <button onclick="showTab('manager-login')">المدير</button>
+  </div>
+
+  <div id="panel-students" class="panel active">
+    <div id="students-list"></div>
+  </div>
+
+  <div id="panel-lessons" class="panel">
+    <div class="card">
+      <div>
+        <div class="name">الرياضيات</div>
+        <div class="meta">الأربعاء ٩:٠٠ ص</div>
+      </div>
+    </div>
+    <div class="card">
+      <div>
+        <div class="name">العلوم</div>
+        <div class="meta">الخميس ١٠:٣٠ ص</div>
+      </div>
+    </div>
+    <div class="card">
+      <div>
+        <div class="name">اللغة العربية</div>
+        <div class="meta">السبت ٨:٠٠ ص</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="panel-add" class="panel">
+    <input id="inp-name" type="text" placeholder="اسم الطالب">
+    <input id="inp-grade" type="text" placeholder="الصف الدراسي">
+    <button class="btn-primary" onclick="addStudent()">إضافة طالب</button>
+    <div class="msg" id="msg"></div>
+  </div>
+
+  <div id="panel-manager-login" class="panel">
+    <div class="login-box">
+      <h2>قسم المدير</h2>
+      <p>أدخل كلمة المرور للدخول</p>
+      <input id="manager-pass" type="password" placeholder="كلمة المرور">
+      <button class="btn-primary" onclick="loginManager()">دخول</button>
+      <div class="msg" id="login-msg"></div>
+    </div>
+  </div>
+
+  <div id="panel-manager" class="panel">
+    <div class="manager-header">
+      <h2>لوحة التحكم</h2>
+      <button class="btn-secondary" onclick="logoutManager()">خروج</button>
+    </div>
+    <div id="manager-students-list"></div>
+  </div>
+</div>
+
+<script>
+  // القائمة الافتراضية تظهر فقط أول مرة يفتح فيها البرنامج
+  const defaultStudents = [
+    {name: 'أحمد محمد', grade: 'الصف الثالث', status: 'نشط'},
+    {name: 'سارة علي', grade: 'الصف الرابع', status: 'نشط'},
+    {name: 'خالد سامي', grade: 'الصف الخامس', status: 'غائب'}
+  ];
+
+  // تحميل البيانات المحفوظة من المتصفح أو استخدام القائمة الافتراضية
+  let students = JSON.parse(localStorage.getItem('ajn_students')) || defaultStudents;
+
+  function saveToLocalStorage() {
+    localStorage.setItem('ajn_students', JSON.stringify(students));
+  }
+
+  function showTab(tab) {
+    if(tab === 'manager-login' || tab === 'manager') {
+      document.getElementById('main-tabs').style.display = 'none';
+    } else {
+      document.getElementById('main-tabs').style.display = 'flex';
+    }
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    document.getElementById('panel-'+tab).classList.add('active');
+    document.querySelectorAll('.tabs button').forEach(b => b.classList.remove('active'));
+    const btn = document.querySelector('.tabs button[onclick="showTab(\''+tab+'\')"]');
+    if(btn) btn.classList.add('active');
+  }
+
+  function renderStudents() {
+    const container = document.getElementById('students-list');
+    container.innerHTML = students.map(s => `
+      <div class="card">
+        <div>
+          <div class="name">${s.name}</div>
+          <div class="meta">${s.grade}</div>
+        </div>
+        <div class="badge ${s.status==='نشط'?'active':'absent'}">${s.status}</div>
+      </div>
+    `).join('');
+  }
+
+  function addStudent() {
+    const n = document.getElementById('inp-name').value.trim();
+    const g = document.getElementById('inp-grade').value.trim();
+    const msg = document.getElementById('msg');
+    if(!n || !g) {
+      msg.textContent = 'يرجى ملء جميع الحقول';
+      msg.className = 'msg error';
+      return;
+    }
+    students.push({name: n, grade: g, status: 'نشط'});
+    saveToLocalStorage(); // حفظ البيانات الجديدة
+    msg.textContent = 'تمت إضافة ' + n + ' (' + g + ')';
+    msg.className = 'msg success';
+    document.getElementById('inp-name').value = '';
+    document.getElementById('inp-grade').value = '';
+    renderStudents();
+  }
+
+  function loginManager() {
+    const pass = document.getElementById('manager-pass').value;
+    const msg = document.getElementById('login-msg');
+    if(pass === '2013') {
+      msg.textContent = '';
+      document.getElementById('manager-pass').value = '';
+      showTab('manager');
+      renderManagerList();
+    } else {
+      msg.textContent = 'كلمة المرور غير صحيحة';
+      msg.className = 'msg error';
+    }
+  }
+
+  function logoutManager() {
+    showTab('students');
+  }
+
+  function renderManagerList() {
+    const container = document.getElementById('manager-students-list');
+    container.innerHTML = students.map((s, i) => `
+      <div class="card">
+        <div>
+          <div class="name">${s.name}</div>
+          <div class="meta">${s.grade} · ${s.status}</div>
+        </div>
+        <div style="display:flex;gap:6px;">
+          <button class="btn-secondary" onclick="toggleStatus(${i})">تبديل</button>
+          <button class="btn-secondary" style="color:#c62828;" onclick="deleteStudent(${i})">حذف</button>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function toggleStatus(i) {
+    students[i].status = students[i].status === 'نشط' ? 'غائب' : 'نشط';
+    saveToLocalStorage(); // حفظ تغيير الحالة
+    renderManagerList();
+    renderStudents();
+  }
+
+  function deleteStudent(i) {
+    students.splice(i, 1);
+    saveToLocalStorage(); // حفظ الحذف
+    renderManagerList();
+    renderStudents();
+  }
+
+  renderStudents();
+</script>
+
+</body>
+  </html>
+  
