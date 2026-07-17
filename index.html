@@ -26,6 +26,7 @@
   .btn-primary:hover { background: #c73e54; }
   .btn-secondary { background: #16213e; color: white; border: 1px solid #e94560; }
   .btn-success { background: #0f3460; color: white; }
+  .btn-danger { background: #c0392b; color: white; }
   .card { 
     background: #16213e; 
     border-radius: 12px; 
@@ -100,6 +101,58 @@
     margin: 10px 0; 
   }
   .delivery-time { color: #aaa; font-size: 14px; }
+  .qty-btn { 
+    background: #e94560; 
+    color: white; 
+    border: none; 
+    width: 32px; 
+    height: 32px; 
+    border-radius: 50%; 
+    cursor: pointer; 
+    font-size: 18px; 
+    margin: 0 8px; 
+  }
+  .qty-display { 
+    display: inline-block; 
+    width: 30px; 
+    text-align: center; 
+    font-weight: bold; 
+    font-size: 18px; 
+  }
+  .total-box { 
+    background: #0f3460; 
+    padding: 15px; 
+    border-radius: 10px; 
+    text-align: center; 
+    margin: 15px 0; 
+    border: 2px solid #e94560; 
+  }
+  .total-price { 
+    font-size: 28px; 
+    color: #e94560; 
+    font-weight: bold; 
+  }
+  .order-summary { 
+    background: #1a1a2e; 
+    padding: 15px; 
+    border-radius: 8px; 
+    margin: 10px 0; 
+  }
+  .order-summary-item { 
+    display: flex; 
+    justify-content: space-between; 
+    padding: 5px 0; 
+    border-bottom: 1px dashed #0f3460; 
+  }
+  .manager-menu-item { 
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center; 
+    padding: 10px; 
+    background: #1a1a2e; 
+    border-radius: 8px; 
+    margin: 5px 0; 
+  }
 </style>
 </head>
 <body>
@@ -134,7 +187,15 @@
       <input class="input" id="custName" placeholder="الاسم (سيتم تشفيره حتى يُطلب)" required>
       <input class="input" id="custPhone" placeholder="رقم التليفون" required>
       <input class="input" id="custAddress" placeholder="العنوان بالتفصيل" required>
-      <textarea class="input" id="orderDesc" rows="4" placeholder="وصف الأوردر (اكتب الأكلات المطلوبة والكميات)" required></textarea>
+      
+      <h4 style="color:#e94560;margin:15px 0;">🍖 اختر من المنيو:</h4>
+      <div id="orderMenuList"></div>
+      
+      <div class="total-box">
+        <div style="color:#aaa;">الإجمالي</div>
+        <div class="total-price"><span id="totalPrice">0</span> جنيه</div>
+        <div id="freeShipMsg" class="free-ship">🚚 شحن مجاني (أول أوردر)</div>
+      </div>
       
       <div style="text-align:center;margin:15px 0;">
         <button class="btn btn-primary" onclick="submitOrder()">✅ تأكيد الطلب</button>
@@ -158,7 +219,22 @@
       <div class="card">
         <h3 style="color:#e94560;">👤 لوحة التحكم - المدير عمر</h3>
         <div class="warning">⚠️ غير مسموح بالتلاعب في النظام إلا بكلمة السر</div>
+        
+        <h4 style="color:#e94560;margin:15px 0;">➕ إضافة صنف جديد للمنيو:</h4>
+        <input class="input" id="newItemName" placeholder="اسم الأكلة">
+        <input class="input" id="newItemPrice" placeholder="السعر (جنيه)" type="number">
+        <div style="text-align:center;">
+          <button class="btn btn-success" onclick="addMenuItem()">➕ إضافة للمنيو</button>
+        </div>
+        
+        <h4 style="color:#e94560;margin:15px 0;">🗑️ إدارة المنيو:</h4>
+        <div id="managerMenuList"></div>
+        
+        <hr style="border-color:#0f3460;margin:20px 0;">
+        
+        <h4 style="color:#e94560;margin:15px 0;">📦 الأوردرات:</h4>
         <div id="ordersList"></div>
+        
         <div style="text-align:center;margin-top:20px;">
           <button class="btn btn-secondary" onclick="logoutManager()">🔒 خروج</button>
         </div>
@@ -173,6 +249,8 @@
   <div class="card" style="max-width:500px;margin:20px auto;">
     <div class="success-msg">✅ تم تأكيد الأوردر بنجاح!</div>
     <p style="text-align:center;color:#4ecca3;font-size:18px;">📩 برجاء تحويل المبلغ المطلوب بعد التوصيل</p>
+    
+    <div class="order-summary" id="paymentSummary"></div>
     
     <div style="text-align:center;margin:20px 0;">
       <div class="timer" id="deliveryTimer">60:00</div>
@@ -205,7 +283,7 @@
 
 <script>
 // ============ البيانات ============
-const MENU = [
+let MENU = [
   { id: 1, name: "كبدة تكاوي", price: 45 },
   { id: 2, name: "سجق تكاوي", price: 40 },
   { id: 3, name: "طرب تكاوي", price: 50 },
@@ -215,11 +293,13 @@ const MENU = [
   { id: 7, name: "فشة تكاوي", price: 70 },
 ];
 
+let cart = {}; // { itemId: quantity }
 const MANAGER_PASS = "عمر";
 let orders = [];
 let currentOrder = 1;
 let managerLoggedIn = false;
 let deliveryInterval = null;
+let nextMenuId = 8;
 
 // ============ المنيو ============
 function initMenu() {
@@ -235,6 +315,43 @@ function initMenu() {
   `).join('');
 }
 
+function initOrderMenu() {
+  const list = document.getElementById('orderMenuList');
+  list.innerHTML = MENU.map(item => `
+    <div class="menu-item">
+      <div>
+        <span class="badge">#${item.id}</span>
+        <span style="margin-right:10px;">${item.name}</span>
+        <span style="color:#e94560;margin-right:10px;">${item.price} جنيه</span>
+      </div>
+      <div>
+        <button class="qty-btn" onclick="changeQty(${item.id}, -1)">−</button>
+        <span class="qty-display" id="qty-${item.id}">0</span>
+        <button class="qty-btn" onclick="changeQty(${item.id}, 1)">+</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function changeQty(id, delta) {
+  if (!cart[id]) cart[id] = 0;
+  cart[id] += delta;
+  if (cart[id] < 0) cart[id] = 0;
+  document.getElementById(`qty-${id}`).textContent = cart[id];
+  updateTotal();
+}
+
+function updateTotal() {
+  let total = 0;
+  for (let id in cart) {
+    const item = MENU.find(m => m.id == id);
+    if (item && cart[id] > 0) {
+      total += item.price * cart[id];
+    }
+  }
+  document.getElementById('totalPrice').textContent = total;
+}
+
 // ============ التبويبات ============
 function showTab(tab) {
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
@@ -242,10 +359,16 @@ function showTab(tab) {
   document.querySelectorAll('.tab-content').forEach(t => t.classList.add('hidden'));
   document.getElementById(tab + 'Tab').classList.remove('hidden');
   
+  if (tab === 'order') {
+    initOrderMenu();
+    updateTotal();
+  }
+  
   if (tab === 'manager' && managerLoggedIn) {
     document.getElementById('managerLogin').classList.add('hidden');
     document.getElementById('managerPanel').classList.remove('hidden');
     renderOrders();
+    renderManagerMenu();
   } else if (tab === 'manager') {
     document.getElementById('managerLogin').classList.remove('hidden');
     document.getElementById('managerPanel').classList.add('hidden');
@@ -257,10 +380,25 @@ function submitOrder() {
   const name = document.getElementById('custName').value.trim();
   const phone = document.getElementById('custPhone').value.trim();
   const address = document.getElementById('custAddress').value.trim();
-  const desc = document.getElementById('orderDesc').value.trim();
   
-  if (!name || !phone || !address || !desc) {
+  if (!name || !phone || !address) {
     alert('⚠️ يرجى ملء جميع البيانات المطلوبة!');
+    return;
+  }
+  
+  // بناء وصف الأوردر من السلة
+  let orderDesc = "";
+  let total = 0;
+  for (let id in cart) {
+    const item = MENU.find(m => m.id == id);
+    if (item && cart[id] > 0) {
+      orderDesc += `${item.name} × ${cart[id]} = ${item.price * cart[id]} جنيه\n`;
+      total += item.price * cart[id];
+    }
+  }
+  
+  if (orderDesc === "") {
+    alert('⚠️ اختر على الأقل صنف واحد من المنيو!');
     return;
   }
   
@@ -272,7 +410,8 @@ function submitOrder() {
     name: name,
     phone: phone,
     address: address,
-    desc: desc,
+    desc: orderDesc,
+    total: total,
     time: now.toLocaleString('ar-EG'),
     deliveryTime: deliveryTime.toLocaleString('ar-EG'),
     status: 'pending',
@@ -280,6 +419,20 @@ function submitOrder() {
   };
   
   orders.push(order);
+  
+  // عرض ملخص الدفع
+  document.getElementById('paymentSummary').innerHTML = `
+    <div class="order-summary-item"><span>رقم الأوردر:</span><span>#${currentOrder}</span></div>
+    <div class="order-summary-item"><span>العنوان:</span><span>${address}</span></div>
+    <div class="order-summary-item"><span>التليفون:</span><span>${phone}</span></div>
+    <hr style="border-color:#0f3460;margin:10px 0;">
+    <pre style="color:#fff;font-family:inherit;white-space:pre-wrap;">${orderDesc}</pre>
+    <hr style="border-color:#0f3460;margin:10px 0;">
+    <div class="order-summary-item" style="font-size:20px;font-weight:bold;color:#e94560;">
+      <span>الإجمالي:</span><span>${total} جنيه</span>
+    </div>
+    ${currentOrder === 1 ? '<div style="color:#4ecca3;text-align:center;">🚚 شحن مجاني (أول أوردر)</div>' : ''}
+  `;
   
   document.getElementById('mainScreen').classList.add('hidden');
   document.getElementById('paymentScreen').classList.remove('hidden');
@@ -301,17 +454,16 @@ function finishPayment() {
 // ============ العميل التالي ============
 function resetToNewOrder() {
   currentOrder++;
+  cart = {};
   document.getElementById('orderNum').textContent = currentOrder;
   document.getElementById('custName').value = '';
   document.getElementById('custPhone').value = '';
   document.getElementById('custAddress').value = '';
-  document.getElementById('orderDesc').value = '';
   document.querySelectorAll('.pay-option').forEach(o => o.classList.remove('selected'));
   
   document.getElementById('nextOrderScreen').classList.add('hidden');
   document.getElementById('mainScreen').classList.remove('hidden');
   
-  // إعادة تفعيل تبويب المنيو
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.tab')[0].classList.add('active');
   document.querySelectorAll('.tab-content').forEach(t => t.classList.add('hidden'));
@@ -352,6 +504,7 @@ function loginManager() {
     document.getElementById('loginError').style.display = 'none';
     document.getElementById('managerPass').value = '';
     renderOrders();
+    renderManagerMenu();
   } else {
     document.getElementById('loginError').style.display = 'block';
     document.getElementById('managerPass').value = '';
@@ -362,6 +515,45 @@ function logoutManager() {
   managerLoggedIn = false;
   document.getElementById('managerPanel').classList.add('hidden');
   document.getElementById('managerLogin').classList.remove('hidden');
+}
+
+// ============ إدارة المنيو (للمدير) ============
+function addMenuItem() {
+  const name = document.getElementById('newItemName').value.trim();
+  const price = parseFloat(document.getElementById('newItemPrice').value);
+  
+  if (!name || !price || price <= 0) {
+    alert('⚠️ أدخل اسم الأكلة والسعر بشكل صحيح!');
+    return;
+  }
+  
+  MENU.push({ id: nextMenuId++, name: name, price: price });
+  document.getElementById('newItemName').value = '';
+  document.getElementById('newItemPrice').value = '';
+  renderManagerMenu();
+  initMenu();
+  alert('✅ تمت الإضافة بنجاح!');
+}
+
+function deleteMenuItem(id) {
+  if (!confirm('هل أنت متأكد من حذف هذا الصنف؟')) return;
+  MENU = MENU.filter(m => m.id !== id);
+  renderManagerMenu();
+  initMenu();
+}
+
+function renderManagerMenu() {
+  const container = document.getElementById('managerMenuList');
+  container.innerHTML = MENU.map(item => `
+    <div class="manager-menu-item">
+      <div>
+        <span class="badge">#${item.id}</span>
+        <span style="margin-right:10px;">${item.name}</span>
+        <span style="color:#e94560;margin-right:10px;">${item.price} جنيه</span>
+      </div>
+      <button class="btn btn-danger" onclick="deleteMenuItem(${item.id})">🗑️ حذف</button>
+    </div>
+  `).join('');
 }
 
 // ============ عرض الأوردرات ============
@@ -386,42 +578,5 @@ function renderOrders() {
         <p><strong>الاسم:</strong> ${nameDisplay}</p>
         <p><strong>التليفون:</strong> ${order.phone}</p>
         <p><strong>العنوان:</strong> ${order.address}</p>
-        <p><strong>الأوردر:</strong> ${order.desc}</p>
-        <p><strong>وقت الطلب:</strong> ${order.time}</p>
-        <p><strong>معاد الاستلام:</strong> ${order.deliveryTime}</p>
-        ${order.id === 1 ? '<span class="free-ship">🚚 شحن مجاني</span>' : ''}
-        <div style="text-align:center;margin-top:10px;">
-          <button class="btn btn-success" onclick="markDelivered(${order.id})">✅ تم التوصيل</button>
-          <button class="btn btn-secondary" onclick="deleteOrder(${order.id})">🗑️ حذف</button>
-        </div>
-      </div>
-    `;
-  }).join('');
-}
-
-function markDelivered(id) {
-  const order = orders.find(o => o.id === id);
-  if (order) {
-    order.status = 'delivered';
-    renderOrders();
-  }
-}
-
-function deleteOrder(id) {
-  if (!confirm('هل أنت متأكد من الحذف؟')) return;
-  orders = orders.filter(o => o.id !== id);
-  renderOrders();
-}
-
-// تحديث تلقائي للأوردرات كل 5 ثواني
-setInterval(() => {
-  if (managerLoggedIn) renderOrders();
-}, 5000);
-
-// ============ تهيئة ============
-initMenu();
-</script>
-
-</body>
- </html>
- 
+        <pre style="color:#fff;font-family:inherit;white-space:pre-wrap;margin:10px 0;"><strong>الأوردر:</strong>\n${order.desc}</pre>
+        <p style="color:#e94560;font-we
